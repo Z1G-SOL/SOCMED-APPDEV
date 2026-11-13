@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'auth/login.dart';
-import 'model/userdata.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Userdata().loadSavedComments(); // bring back comments saved earlier
+void main() {
   runApp(const MyApp());
 }
 

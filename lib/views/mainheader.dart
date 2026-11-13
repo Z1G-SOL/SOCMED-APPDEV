@@ -15,16 +15,12 @@ class Mainheader extends StatelessWidget {
           backgroundImage: AssetImage(userdata.myUserAccount.img),
           radius: 40,
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            userdata.myUserAccount.name,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 2,
-            ),
+        Text(
+          userdata.myUserAccount.name,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 2,
           ),
         ),
         Text(userdata.myUserAccount.email),

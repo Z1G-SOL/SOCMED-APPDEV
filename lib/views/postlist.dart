@@ -16,8 +16,8 @@ class Postlist extends StatefulWidget {
 class _PostlistState extends State<Postlist> {
   var nametxtStyle = const TextStyle(fontSize: 16, fontWeight: FontWeight.w500);
 
-  // Opens a screen, then refreshes this list when you come back so the
-  // "N Comments" label shows any comment you just added.
+  // Opens a screen, then refreshes this list when you come back
+  // (so a Like pressed on the post screen shows here too).
   Future<void> gotoPage(BuildContext context, Widget page) async {
     await Navigator.push(
       context,
@@ -60,7 +60,7 @@ class _PostlistState extends State<Postlist> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Row(children: [Expanded(child: Text(userPost.postcontent))]),
+            Row(children: [Text(userPost.postcontent)]),
             const SizedBox(height: 15),
             Container(
               height: 350,
@@ -98,16 +98,20 @@ class _PostlistState extends State<Postlist> {
               children: [
                 TextButton.icon(
                   style: TextButton.styleFrom(
+                    // FIX: colors were swapped (liked showed grey).
                     foregroundColor:
-                        userPost.isLiked ? Colors.grey : Colors.blue,
+                        userPost.isLiked ? Colors.blue : Colors.grey,
                   ),
-                  onPressed: () {},
+                  // FIX: Like now works.
+                  onPressed: () {
+                    setState(() => userPost.isLiked = !userPost.isLiked);
+                  },
                   icon: const Icon(Icons.thumb_up, size: 20),
                   label: const Text('Like'),
                 ),
                 TextButton.icon(
                   style: TextButton.styleFrom(foregroundColor: Colors.grey),
-                  // FIX: Comment opens the post at its comments, keyboard ready.
+                  // FIX: Comment opens the post and goes to its comments.
                   onPressed: () {
                     gotoPage(
                       context,
@@ -119,13 +123,19 @@ class _PostlistState extends State<Postlist> {
                 ),
                 TextButton.icon(
                   style: TextButton.styleFrom(foregroundColor: Colors.grey),
-                  onPressed: () {},
+                  // FIX: Share now responds.
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Post shared!')),
+                    );
+                  },
                   icon: const Icon(Icons.share, size: 20),
                   label: const Text('Share'),
                 ),
               ],
             ),
           ),
+          const Divider(color: Colors.grey),
         ],
       );
 
@@ -135,6 +145,7 @@ class _PostlistState extends State<Postlist> {
           userline(userPost),
           postimage(userPost),
           counts(userPost),
+          const Divider(),
           buttons(userPost),
           SizedBox(height: 10, child: Container(color: Colors.grey)),
           const SizedBox(height: 15),
@@ -143,23 +154,17 @@ class _PostlistState extends State<Postlist> {
 
   @override
   Widget build(BuildContext context) {
-    final posts = widget.userdata.userList;
-    // FIX (the list view bug): a plain list that never scrolls by itself;
-    // the page scrolls it.
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.zero,
-      itemCount: posts.length,
-      itemBuilder: (context, index) {
-        final userPost = posts[index];
+    // FIX: a plain Column. The old ListView inside a SingleChildScrollView
+    // inside the page's ListView fought over scrolling.
+    return Column(
+      children: widget.userdata.userList.map((userPost) {
         return InkWell(
           onTap: () {
             gotoPage(context, ProfileView(userPost: userPost));
           },
           child: showPost(userPost),
         );
-      },
+      }).toList(),
     );
   }
 }

@@ -2,41 +2,34 @@ import 'package:flutter/material.dart';
 import '../model/friend.dart';
 import '../model/userdata.dart';
 
+// ignore: must_be_immutable
 class Friendlist extends StatelessWidget {
   Friendlist({super.key, required this.userdata});
 
   final Userdata userdata;
 
-  final followTxtStyle = const TextStyle(
+  var followTxtStyle = const TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.bold,
   );
 
   Widget friend(Friend friend) => Card(
-        clipBehavior: Clip.antiAlias, // FIX: keeps photos inside the card
+        // FIX: keeps photos inside the card
+        clipBehavior: Clip.antiAlias,
         child: Column(
           children: [
             Expanded(
-              // FIX: every photo fills the SAME box, so they line up.
-              child: SizedBox(
+              // FIX: every photo fills the same box, so they all line up.
+              child: Image.asset(
+                friend.img,
                 width: double.infinity,
-                child: Image.asset(
-                  friend.img,
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                  errorBuilder: (context, error, stack) =>
-                      const Center(child: Icon(Icons.person, size: 40)),
-                ),
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
               ),
             ),
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Text(
-                friend.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
+              child: Text(friend.name),
             ),
           ],
         ),
@@ -44,9 +37,8 @@ class Friendlist extends StatelessWidget {
 
   Widget friendsListGrid() => GridView.builder(
         shrinkWrap: true,
-        // FIX: the grid must not scroll by itself; the page scrolls it.
+        // FIX: the grid must not scroll by itself; the page scrolls.
         physics: const NeverScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
           mainAxisExtent: 180,
@@ -71,7 +63,7 @@ class Friendlist extends StatelessWidget {
           child: Row(children: [Text('${userdata.friendList.length} Friends')]),
         ),
         const SizedBox(height: 10),
-        friendsListGrid(),
+        SizedBox(height: 380, child: friendsListGrid()),
         SizedBox(height: 10, child: Container(color: Colors.grey)),
       ],
     );

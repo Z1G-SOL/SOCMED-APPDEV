@@ -31,8 +31,8 @@ class _SocialmediaState extends State<Socialmedia> {
           icon: Icon(Icons.arrow_back),
         ),
       ),
-      // FIX: this is the ONLY thing on the screen that scrolls.
       body: ListView(
+        shrinkWrap: true,
         children: [
           Mainheader(userdata: userdata),
           Infoheader(userdata: userdata),

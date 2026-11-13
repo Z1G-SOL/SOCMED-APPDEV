@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../model/usercomment.dart';
 import '../model/userdata.dart';
@@ -9,7 +8,7 @@ class ProfileView extends StatefulWidget {
   const ProfileView({
     super.key,
     required this.userPost,
-    this.openComments = false, // true = jump to comments and open the keyboard
+    this.openComments = false, // true = scroll to the comments when opened
   });
 
   final Userpost userPost;
@@ -20,18 +19,16 @@ class ProfileView extends StatefulWidget {
 }
 
 class _ProfileViewState extends State<ProfileView> {
-  final Userdata userdata = Userdata();
-  final TextEditingController commentController = TextEditingController();
-  final FocusNode commentFocus = FocusNode();
+  final Userdata userData = Userdata();
   final ScrollController scrollController = ScrollController();
-  bool isSending = false;
+  // Marks where the comment section starts.
+  final GlobalKey commentsKey = GlobalKey();
 
   var nametxtStyle = const TextStyle(fontSize: 16, fontWeight: FontWeight.w500);
 
   @override
   void initState() {
     super.initState();
-    // Opened from the Comment button on the post list: go to the comments.
     if (widget.openComments) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) goToComments();
@@ -41,55 +38,20 @@ class _ProfileViewState extends State<ProfileView> {
 
   @override
   void dispose() {
-    commentController.dispose();
-    commentFocus.dispose();
     scrollController.dispose();
     super.dispose();
   }
 
-  // Scrolls down to the comment section, then opens the comment box.
-  Future<void> goToComments() async {
-    if (scrollController.hasClients) {
-      await scrollController.animateTo(
-        scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
-    if (mounted) commentFocus.requestFocus();
-  }
-
-  // Adds the typed comment to this post, saves it on the phone, shows it.
-  Future<void> submitComment() async {
-    final text = commentController.text.trim();
-    if (text.isEmpty || isSending) return;
-    setState(() => isSending = true);
-
-    final saved = await userdata.addComment(widget.userPost, text);
-
-    if (!mounted) return;
-    commentController.clear();
-    setState(() => isSending = false);
-    FocusScope.of(context).unfocus();
-
-    if (!saved) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Comment posted, but it could not be saved on this device.'),
-        ),
-      );
-    }
-
-    // Scroll down so the new comment is in view.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (scrollController.hasClients) {
-        scrollController.animateTo(
-          scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+  // Scrolls so the comment section is at the top of the screen.
+  void goToComments() {
+    final ctx = commentsKey.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      alignment: 0.0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
   }
 
   Widget buttons(Userpost userPost) => Column(
@@ -103,23 +65,32 @@ class _ProfileViewState extends State<ProfileView> {
               children: [
                 TextButton.icon(
                   style: TextButton.styleFrom(
+                    // FIX: colors were swapped (liked showed grey).
                     foregroundColor:
-                        userPost.isLiked ? Colors.grey : Colors.blue,
+                        userPost.isLiked ? Colors.blue : Colors.grey,
                   ),
-                  onPressed: () {},
+                  // FIX: Like now works.
+                  onPressed: () {
+                    setState(() => userPost.isLiked = !userPost.isLiked);
+                  },
                   icon: const Icon(Icons.thumb_up, size: 20),
                   label: const Text('Like'),
                 ),
                 TextButton.icon(
                   style: TextButton.styleFrom(foregroundColor: Colors.grey),
-                  // FIX: Comment scrolls to the comment section and opens the box.
+                  // FIX: Comment scrolls down to the comment section.
                   onPressed: goToComments,
                   icon: const Icon(Icons.chat_bubble, size: 20),
                   label: const Text('Comment'),
                 ),
                 TextButton.icon(
                   style: TextButton.styleFrom(foregroundColor: Colors.grey),
-                  onPressed: () {},
+                  // FIX: Share now responds.
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Post shared!')),
+                    );
+                  },
                   icon: const Icon(Icons.share, size: 20),
                   label: const Text('Share'),
                 ),
@@ -131,12 +102,14 @@ class _ProfileViewState extends State<ProfileView> {
       );
 
   Widget commenters(Userpost userPost) => Padding(
+        key: commentsKey,
         padding: const EdgeInsets.all(10.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // FIX: this showed the number of SHARES, not comments.
             Text(
-              '${userPost.comments.length}',
+              userPost.numcomments,
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
@@ -189,7 +162,7 @@ class _ProfileViewState extends State<ProfileView> {
                     padding: const EdgeInsets.only(left: 8, top: 4),
                     child: Row(
                       children: [
-                        Text(userComment.displayTime,
+                        Text(userComment.commentTime,
                             style: const TextStyle(fontSize: 12)),
                         const SizedBox(width: 12),
                         const Text('Like', style: TextStyle(fontSize: 12)),
@@ -239,7 +212,7 @@ class _ProfileViewState extends State<ProfileView> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Row(children: [Expanded(child: Text(userPost.postcontent))]),
+            Row(children: [Text(userPost.postcontent)]),
             const SizedBox(height: 15),
             Container(
               height: 350,
@@ -251,53 +224,6 @@ class _ProfileViewState extends State<ProfileView> {
               ),
             ),
           ],
-        ),
-      );
-
-  // The "write a comment" bar pinned to the bottom of the screen.
-  Widget commentBox() => SafeArea(
-        top: false,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            border: Border(top: BorderSide(color: Colors.grey.shade300)),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundImage: AssetImage(userdata.myUserAccount.img),
-                radius: 16,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: commentController,
-                  focusNode: commentFocus,
-                  textCapitalization: TextCapitalization.sentences,
-                  textInputAction: TextInputAction.send,
-                  inputFormatters: [LengthLimitingTextInputFormatter(300)],
-                  onSubmitted: (_) => submitComment(),
-                  decoration: InputDecoration(
-                    hintText: 'Write a comment...',
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: isSending ? null : submitComment,
-                icon: const Icon(Icons.send),
-                color: Colors.blue,
-              ),
-            ],
-          ),
         ),
       );
 
@@ -316,30 +242,21 @@ class _ProfileViewState extends State<ProfileView> {
           icon: const Icon(Icons.arrow_back, color: Colors.grey),
         ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            // ONE list. Comments are spread straight into it
-            // instead of a second ListView inside this one.
-            child: ListView(
-              controller: scrollController,
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              children: [
-                userline(userPost),
-                postimage(userPost),
-                buttons(userPost),
-                commenters(userPost),
-                if (userPost.comments.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text('No comments yet. Be the first to comment!'),
-                  ),
-                ...userPost.comments.map(userpostdetails),
-              ],
-            ),
-          ),
-          commentBox(),
-        ],
+      // FIX: one scrolling page with the comments inside it (the old
+      // ListView inside a ListView fought over scrolling, and the Comment
+      // button needs every part of the page built to scroll to it).
+      body: SingleChildScrollView(
+        controller: scrollController,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            userline(userPost),
+            postimage(userPost),
+            buttons(userPost),
+            commenters(userPost),
+            ...userData.commentList.map(userpostdetails),
+          ],
+        ),
       ),
     );
   }
